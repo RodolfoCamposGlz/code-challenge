@@ -2,20 +2,101 @@
 import React, { useState } from "react";
 import TextInput from "../components/TextInput/TextInput";
 import Button from "../components/Button/Button";
-export default function Home() {
-  const [searchValue, setSearchValue] = useState(""); // State for managing input value
+import useSWR from "swr";
+import useDebounce from "../hooks/useDebounce";
+import { getWeatherData } from "../services/apiService";
+import WeatherItem from "../components/WeatherItem/WeatherItem";
+import Loader from "../components/Loader/Loader";
+import { ICity, IWeatherData } from "./home.types";
+const API_CITIES = "https://search.reservamos.mx/api/v2/places";
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchValue(e.target.value); // Update state when input changes
+const fetcher = async (url: string): Promise<ICity[]> => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to fetch");
+  }
+  return response.json();
+};
+
+export default function Home() {
+  const [searchCity, setSerachCity] = useState<string>("");
+  const [selectedCity, setSelectedCity] = useState<ICity | null>(null);
+  const [listWeather, setListWeather] = useState<IWeatherData[]>([]);
+  const [isListLoading, setIsListLoading] = useState<boolean>(false);
+
+  const debouncedSearchValue: string = useDebounce(searchCity, 500);
+
+  const { data, error, isLoading } = useSWR<ICity[]>(
+    debouncedSearchValue ? `${API_CITIES}?q=${debouncedSearchValue}` : null,
+    fetcher
+  );
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSerachCity(e.target.value);
+    //avoid user to submit an unselected city
+    if (selectedCity) {
+      setSelectedCity(null);
+    }
   };
 
-  const handleSearch = () => {
-    console.log("Searching for weather:", searchValue); // Placeholder for search logic
+  const onSelectCity = (option: ICity): void => {
+    setSelectedCity(option);
+    setSerachCity(`${option.city_name} ,${option.country} , ${option.display}`);
+  };
+  const handleSearch = async (): Promise<void> => {
+    if (selectedCity) {
+      setIsListLoading(true);
+      setListWeather([]);
+      const response = await getWeatherData(
+        selectedCity.lat,
+        selectedCity.long
+      );
+      const firstFiveDays = response.slice(0, 5);
+      setListWeather(firstFiveDays);
+      setIsListLoading(false);
+    }
+  };
+
+  const handleClear = (): void => {
+    setSerachCity("");
+    setSelectedCity(null);
+    setListWeather([]);
   };
   return (
-    <div className="flex items-end w-full max-w-4xl">
-      <TextInput required label="Search weather" />
-      <Button className="ml-2">Search</Button>
+    <div className="flex w-full max-w-4xl flex-col">
+      <div className="flex flex-row items-end items-end">
+        <TextInput
+          id="city"
+          label="City"
+          value={searchCity}
+          onChange={handleInputChange}
+          placeholder="Enter city"
+          options={data}
+          isLoading={isLoading}
+          onSelect={onSelectCity}
+          handleClear={handleClear}
+        />
+        <Button
+          disabled={!selectedCity}
+          className="ml-2"
+          onClick={handleSearch}
+        >
+          Search
+        </Button>
+      </div>
+      {listWeather.length > 0 ? (
+        <div className="flex flex-wrap mt-8">
+          {listWeather.map((forecast: IWeatherData) => (
+            <WeatherItem key={forecast.dt_txt} forecast={forecast} />
+          ))}
+        </div>
+      ) : isListLoading ? (
+        <div className="flex justify-center mt-10">
+          <Loader />
+        </div>
+      ) : null}
+
+      {error && <p className="text-red-500">Something went wrong!</p>}
     </div>
   );
 }
