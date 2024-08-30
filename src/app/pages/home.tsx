@@ -4,10 +4,11 @@ import TextInput from "../components/TextInput/TextInput";
 import Button from "../components/Button/Button";
 import useSWR from "swr";
 import useDebounce from "../hooks/useDebounce";
-import { getWeatherData } from "../services/apiService";
+import { fetchWeatherData } from "../services/apiService";
 import WeatherItem from "../components/WeatherItem/WeatherItem";
 import Loader from "../components/Loader/Loader";
 import { ICity, IWeatherData } from "./home.types";
+import dayjs from "dayjs";
 const API_CITIES = "https://search.reservamos.mx/api/v2/places";
 
 const fetcher = async (url: string): Promise<ICity[]> => {
@@ -43,16 +44,42 @@ export default function Home() {
     setSelectedCity(option);
     setSerachCity(`${option.city_name} ,${option.country} , ${option.display}`);
   };
+
+  const filterNextFiveDaysUnique = (data: IWeatherData[]) => {
+    const today = dayjs().startOf("day");
+    const days = Array.from({ length: 5 }, (_, i) =>
+      today.add(i, "day").format("YYYY-MM-DD")
+    );
+
+    const uniqueData = new Map<string, IWeatherData>();
+
+    data.forEach((item) => {
+      const itemDate = dayjs(item.dt_txt).format("YYYY-MM-DD");
+      if (days.includes(itemDate) && !uniqueData.has(itemDate)) {
+        uniqueData.set(itemDate, item);
+      }
+    });
+
+    return Array.from(uniqueData.values());
+  };
+
   const handleSearch = async (): Promise<void> => {
-    if (selectedCity) {
+    if (!selectedCity) return;
+
+    try {
       setIsListLoading(true);
       setListWeather([]);
-      const response = await getWeatherData(
+
+      const weatherData = await fetchWeatherData(
         selectedCity.lat,
         selectedCity.long
       );
-      const firstFiveDays = response.slice(0, 5);
-      setListWeather(firstFiveDays);
+      const filteredWeatherData = filterNextFiveDaysUnique(weatherData);
+
+      setListWeather(filteredWeatherData);
+    } catch (error) {
+      console.error("Failed to fetch weather data:", error);
+    } finally {
       setIsListLoading(false);
     }
   };

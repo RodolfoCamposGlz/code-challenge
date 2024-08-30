@@ -1,12 +1,6 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Home from "./home";
-import { getWeatherData } from "../services/apiService";
-import useSWR from "swr";
-// Mocking the services
-jest.mock("../services/apiService", () => ({
-  getWeatherData: jest.fn(),
-}));
 
 test("renders Home component", () => {
   render(<Home />);

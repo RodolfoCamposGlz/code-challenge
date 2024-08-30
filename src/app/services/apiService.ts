@@ -4,7 +4,7 @@ import { IWeatherData } from "../pages/home.types";
 const WEATHER_API_KEY = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
 const cache = new Map<string, any>();
 
-export const getWeatherData = async (
+export const fetchWeatherData = async (
   lat: string,
   lon: string
 ): Promise<IWeatherData[]> => {
