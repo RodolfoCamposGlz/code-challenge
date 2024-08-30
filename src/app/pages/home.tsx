@@ -91,7 +91,7 @@ export default function Home() {
   };
   return (
     <div className="flex w-full max-w-4xl flex-col">
-      <div className="flex flex-row items-end items-end">
+      <div className="flex flex-col lg:flex-row items-end items-end">
         <TextInput
           id="city"
           label="City"
@@ -105,14 +105,14 @@ export default function Home() {
         />
         <Button
           disabled={!selectedCity}
-          className="ml-2"
+          className="ml-2 lg:w-auto lg:mt-0 w-full mt-4"
           onClick={handleSearch}
         >
           Search
         </Button>
       </div>
       {listWeather.length > 0 ? (
-        <div className="flex flex-wrap mt-8">
+        <div className="flex flex-wrap mt-8 justify-center">
           {listWeather.map((forecast: IWeatherData) => (
             <WeatherItem key={forecast.dt_txt} forecast={forecast} />
           ))}
